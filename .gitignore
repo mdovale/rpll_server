@@ -1,0 +1,16 @@
+# C build products
+*.o
+*.d
+*.a
+*.so
+server
+rpdevmem
+*.exe
+
+# Doxygen
+doc/
+html/
+latex/
+
+# OS
+.DS_Store
