@@ -34,7 +34,7 @@
 
 /**
  * \file server.h
- * \brief Red Pitaya server API: frame building, commands, PLL logging, and main loop.
+ * \brief RedPitaya server API: frame building, commands, PLL logging, and main loop.
  */
 
 #include <stddef.h>

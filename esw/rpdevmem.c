@@ -1,5 +1,5 @@
 /*
- * Minimal devmem-like utility for Red Pitaya register access.
+ * Minimal devmem-like utility for RedPitaya register access.
  * Use when devmem is not available on the target.
  *
  * Usage:

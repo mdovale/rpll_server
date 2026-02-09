@@ -2,7 +2,7 @@
 #define RP_PROTOCOL_H
 
 /**
- * Shared Red Pitaya server protocol constants for esw and sw.
+ * Shared RedPitaya server protocol constants for esw and sw.
  * Wire format and behavior are defined by the server (esw); this header
  * keeps port, frame size, and command address space in sync across clients.
  */

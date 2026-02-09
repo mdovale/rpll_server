@@ -36,7 +36,7 @@
 #define SOC_IDENTIFIER_FILE "/sys/devices/soc0/soc_id"
 
 /**
- * All supported Red Pitaya models
+ * All supported RedPitaya models
  */
 enum red_pitaya_model {
     RP_125_14,
@@ -45,7 +45,7 @@ enum red_pitaya_model {
 #define red_pitaya_model_count 2
 
 /**
- * Identify the redpitaya model (Red Pitaya 125-14 or Red Pitaya 250-12)
+ * Identify the redpitaya model (RedPitaya 125-14 or RedPitaya 250-12)
  * @return An enum value of type red_pitaya_model
  */
 enum red_pitaya_model get_rp_model(void);

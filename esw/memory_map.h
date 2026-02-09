@@ -47,7 +47,7 @@
 void* mmap_default(int fd, int address, int multiplier);
 
 /**
- * Map the application specific memory addresses of the automatically identified Red Pitaya model.
+ * Map the application specific memory addresses of the automatically identified RedPitaya model.
  * The returned pointers are used by both the CPU and the FPGA application and are used for communication between them.
  * @param file_name The file name of the shared memory
  * @return An array of pointers with indexes as defined in the enum <memory_map>.
@@ -80,7 +80,7 @@ enum memory_map {
 };
 
 /**
- * All red pitaya specific addresses
+ * All RedPitaya specific addresses
  */
 static const int MEMORY_MAP_ADDRESS[][MEMORY_MAP_COUNT] = {
     [RP_125_14] = {

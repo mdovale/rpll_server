@@ -1,12 +1,12 @@
 # rpll server
 
-Embedded and host-side server components for the rpll Red Pitaya laser offset locking system. The main server runs on the Red Pitaya (Zynq PS), listens for TCP clients, reads FPGA memory (PLL, servo, scope), computes FFT on scope data, and streams binary frames to the client. Commands from the client (register writes, resets) are processed and applied to the FPGA.
+Embedded and host-side server components for the rpll RedPitaya laser offset locking system. The main server runs on the RedPitaya (Zynq PS), listens for TCP clients, reads FPGA memory (PLL, servo, scope), computes FFT on scope data, and streams binary frames to the client. Commands from the client (register writes, resets) are processed and applied to the FPGA.
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| **esw/** | Embedded software: server binary and helpers that run on the Red Pitaya. |
+| **esw/** | Embedded software: server binary and helpers that run on the RedPitaya. |
 | **sw/** | Optional simple C client (`client.c`) for testing: connects, sends commands, receives frames. |
 | **rp_protocol.h** | Shared protocol constants (port 1001, frame size, command address space) for esw and sw. |
 
@@ -18,11 +18,11 @@ The server in `esw/`:
 - Maps FPGA regions via `memory_map.c` / `memory_map.h` (AXI/BRAM).
 - Reads PLL state, servo outputs, and scope buffers from the FPGA; runs FFT on scope data (real FFT 1024, in-tree implementation) and fills a double-precision frame.
 - Sends one frame per client request (binary stream of doubles).
-- Processes 8-byte binary commands (register address + value); see `cmd_parse.c` and `server/rp_protocol.h`.
+- Processes 8-byte binary commands (register address + value); see `cmd_parse.c` and `rp_protocol.h`.
 
-### Build (on Red Pitaya or cross-compile)
+### Build (on RedPitaya or cross-compile)
 
-From `server/esw/`:
+From `rpll_server/esw/` (or from this directory, `esw/`):
 
 ```bash
 make
@@ -40,7 +40,7 @@ This builds and runs `test_parse_command` (command parsing) and `test_frame_layo
 
 ### Run manually
 
-On the Red Pitaya, after loading the FPGA bitfile (e.g. `cat …/system_wrapper.bit > /dev/xdevcfg` for 125-14, or `red_pitaya_top.bit` for 250-12):
+On the RedPitaya, after loading the FPGA bitfile (e.g. `cat …/system_wrapper.bit > /dev/xdevcfg` for 125-14, or `red_pitaya_top.bit` for 250-12):
 
 ```bash
 ./server
@@ -64,7 +64,7 @@ Install paths (from `debian/rp-ll-esw.install`): `server` → `/usr/bin/rpll_esw
 Doxygen comments are in the esw sources. To build the PDF (Doxygen + LaTeX required):
 
 ```bash
-cd server/esw
+cd rpll_server/esw
 make doc/latex/refman.pdf
 ```
 
@@ -72,7 +72,7 @@ make doc/latex/refman.pdf
 
 Minimal client that connects to the server, sends a fixed command sequence, and receives frame data. Useful for quick tests without the Python GUI.
 
-Build and run from `server/sw/`:
+Build and run from `rpll_server/sw/`:
 
 ```bash
 make
