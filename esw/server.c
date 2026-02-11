@@ -50,6 +50,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <time.h>
@@ -58,6 +59,27 @@
 #define SERVER_LISTEN_BACKLOG 1024
 #define SCOPE_READ_USLEEP_US 5000
 #define CMD_BUF_SIZE 8
+
+static volatile sig_atomic_t g_stop_requested = 0;
+
+static void handle_stop_signal(int signo)
+{
+    (void)signo;
+    g_stop_requested = 1;
+}
+
+static void install_signal_handlers(void)
+{
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = handle_stop_signal;
+    sigemptyset(&sa.sa_mask);
+    /* Important: do NOT set SA_RESTART so that blocking accept() can return EINTR,
+     * letting the main loop exit cleanly on Ctrl+C. */
+    sa.sa_flags = 0;
+    (void)sigaction(SIGINT, &sa, NULL);
+    (void)sigaction(SIGTERM, &sa, NULL);
+}
 
 
 void add_fft_to_frame(void** memory_map, double* frame)
@@ -343,10 +365,15 @@ int start_server(void)
 
     if (bind(sock_server, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("bind");
-        return EXIT_FAILURE;
+        close(sock_server);
+        return -1;
     }
 
-    listen(sock_server, SERVER_LISTEN_BACKLOG);
+    if (listen(sock_server, SERVER_LISTEN_BACKLOG) < 0) {
+        perror("listen");
+        close(sock_server);
+        return -1;
+    }
     printf("Listening on port %d ...\n", RP_DEFAULT_PORT);
 
     return sock_server;
@@ -408,6 +435,8 @@ void add_white_noise(void** memory_map, t_config* config)
 
 int main(int argc, char** argv)
 {
+    install_signal_handlers();
+
     int persist = 0;
     int skip_cap_handshake = 0;
     pll_logger pll_log = { 0 };
@@ -459,7 +488,17 @@ int main(int argc, char** argv)
     size_t cmd_need = 4;
     size_t cmd_consumed;
 
+    int rc = EXIT_SUCCESS;
+    enum red_pitaya_model model = get_rp_model();
+    if ((int)model < 0 || (int)model >= red_pitaya_model_count) {
+        model = RP_125_14;
+    }
+
     int sock_server = start_server();
+    if (sock_server < 0) {
+        rc = EXIT_FAILURE;
+        goto cleanup;
+    }
     // Helpful startup marker for remote debugging.
     fprintf(stderr, "Server initialized (persist=%d, skip_cap=%d). Waiting for client...\n", persist, skip_cap_handshake);
     fflush(stderr);
@@ -472,15 +511,20 @@ int main(int argc, char** argv)
         }
     }
 
-    while (1) {
+    while (!g_stop_requested) {
         // Accept a new client if none connected.
         if (sock_client < 0) {
             sock_client = accept(sock_server, NULL, NULL);
             if (sock_client < 0) {
-                if (!(errno == EAGAIN || errno == EWOULDBLOCK)) {
+                if (errno == EINTR) {
+                    /* Interrupted by signal (e.g. Ctrl+C). Exit loop if stop requested. */
+                    if (g_stop_requested) {
+                        break;
+                    }
+                } else if (!(errno == EAGAIN || errno == EWOULDBLOCK)) {
                     perror("accept");
-                    pll_logger_close(&pll_log);
-                    return EXIT_FAILURE;
+                    rc = EXIT_FAILURE;
+                    break;
                 }
             } else {
                 fprintf(stderr, "Client connected (fd=%d)\n", sock_client);
@@ -526,7 +570,11 @@ int main(int argc, char** argv)
                 cmd_need_8 = 0;
                 cmd_need = 4;
             } else if (r < 0) {
-                if (!(errno == EAGAIN || errno == EWOULDBLOCK)) {
+                if (errno == EINTR) {
+                    if (g_stop_requested) {
+                        break;
+                    }
+                } else if (!(errno == EAGAIN || errno == EWOULDBLOCK)) {
                     perror("recv");
                     close(sock_client);
                     sock_client = -1;
@@ -566,14 +614,26 @@ int main(int argc, char** argv)
         }
     }
 
+cleanup:
+    config.start_measuring = 0;
     pll_logger_close(&pll_log);
-    close(sock_client);
-    close(sock_server);
-    munmap(memory_map[CFG_RST], sysconf(_SC_PAGESIZE));
-    // munmap(memory_map[CFG_F_G], sysconf(_SC_PAGESIZE));
-    // munmap(memory_map[CFG_DDS], sysconf(_SC_PAGESIZE));
-    // munmap(memory_map[RD_FLG_SC], sysconf(_SC_PAGESIZE));
-    munmap(memory_map[BRAM_SCOPE], sysconf(_SC_PAGESIZE));
-    munmap(memory_map[RD_FLG_SC], sysconf(_SC_PAGESIZE));
-    return 0;
+    if (sock_client >= 0) {
+        close(sock_client);
+        sock_client = -1;
+    }
+    if (sock_server >= 0) {
+        close(sock_server);
+        sock_server = -1;
+    }
+    if (memory_map) {
+        for (int i = 0; i < MEMORY_MAP_COUNT; i++) {
+            void* p = memory_map[i];
+            if (p && p != MAP_FAILED) {
+                munmap(p, sysconf(_SC_PAGESIZE) * MEMORY_MAP_SIZE[model][i]);
+            }
+        }
+        free(memory_map);
+        memory_map = NULL;
+    }
+    return rc;
 }

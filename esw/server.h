@@ -133,7 +133,7 @@ void process_command(void** memory_map, uint32_t* command, t_config* config);
 
 /**
  * \brief Create a TCP server on RP_DEFAULT_PORT and start listening.
- * \return Server socket on success, EXIT_FAILURE on socket/bind/listen error.
+ * \return Server socket on success, -1 on socket/bind/listen error.
  */
 int start_server(void);
 
