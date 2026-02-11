@@ -1,9 +1,0 @@
-[Unit]
-Description=Load FPGA image and start server
-
-[Service]
-ExecStart=/usr/bin/lol-setup
-Type=idle
-
-[Install]
-WantedBy=multi-user.target
